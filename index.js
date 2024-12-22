@@ -7,67 +7,60 @@ const merchantKey = ""; //TODO - replace with value provided in merchant dashboa
 const authenticityToken = ""; //TODO - replace with value provided in merchant dashboard
 const BASE_URL = "https://ipgtest.monri.com";
 
-router.get("/", async (req, res) => {
-  try {
-    // Define body parameters (modify according to your requirements)
-    const body = {
-      transaction_type: "purchase",
-      amount: 3000, // Amount in minor units (e.g., 30.00 = 3000)
-      currency: "BAM",
-      order_number: "6638614b544b7058414b5467304146574c647841", // Unique
-      order_info: "Order info",
-      language: "hr",
-      ch_full_name: "John Doe",
-      ch_address: "Elm street 22",
-      ch_city: "Orgrimmar",
-      ch_zip: "q123abc99",
-      ch_country: "US",
-      ch_phone: "123456",
-      ch_email: "john.doe@email.com",
-      supported_payment_methods: [
-        "fa603bc5007cc9c0527cf8e940364335129966b60e502390",
-      ],
-    };
+router.get("/", async function (req, res, next) {
+  var body = JSON.stringify({
+    transaction_type: "purchase",
+    amount: 30,
+    currency: "BAM",
+    number_of_installments: "",
+    order_number: "6638614b544b7058414b5467304146574c647841",
+    order_info: "Order info",
+    language: "hr",
+    ch_full_name: "John Doe",
+    ch_address: "Elm street 22",
+    ch_city: "Orgrimmar",
+    ch_zip: "q123abc99",
+    ch_country: "US",
+    ch_phone: "123456",
+    ch_email: "john.doe@email.com",
+    comment: "",
+    supported_payment_methods: [
+      "fa603bc5007cc9c0527cf8e940364335129966b60e502390",
+    ],
+  });
 
-    const path = "/v2/payment/new";
-    const fullPath = BASE_URL + path;
+  const PATH = `${BASE_URL}/v2/terminal-entry/create-or-update`;
 
-    // Generate timestamp
-    const timestamp = Math.floor(Date.now() / 1000); // Use seconds as per Unix format
+  const crypto = require("crypto");
+  var fullpath = `/v2/payment/new`;
+  var body = JSON.stringify({
+    example: "1",
+  });
+  var timestamp = new Date().getTime(); // If you are using this as an example replace exact value with call to eg (new Date()).getTime()
 
-    // Digest generation
-    const digestString =
-      merchantKey + timestamp + authenticityToken + path + JSON.stringify(body);
+  var digest = crypto
+    .createHash("sha512")
+    .update(merchantKey + timestamp + authenticityToken + fullpath + body)
+    .digest("hex");
 
-    const digest = crypto
-      .createHash("sha512")
-      .update(digestString)
-      .digest("hex");
-
-    // POST request
-    const response = await axios.post(fullPath, body, {
+  const data = await axios
+    .post(PATH, body, {
       headers: {
         "Content-Type": "application/json",
+        "authenticity-token": authenticityToken,
         Accept: "application/json",
-        Authorization: `WP3-v2.1 ${authenticityToken} ${timestamp} ${digest}`,
+        digest,
+        schema: "WP3-v2.1",
+        timestamp,
       },
+    })
+    .catch((error) => {
+      console.log(error.response.data);
     });
 
-    res.status(200).json({
-      message: "Payment created successfully",
-      response: response.data,
-    });
-  } catch (error) {
-    console.error(
-      "Error:",
-      error.response ? error.response.data : error.message
-    );
-
-    res.status(error.response?.status || 500).json({
-      message: "Failed to create payment",
-      error: error.response?.data || error.message,
-    });
-  }
+  https: res.send(
+    `respond with a resource <br> TIMESTAMP: ${timestamp} <br> DIGEST: ${digest} <br> DATA: ${data}`
+  );
 });
 
 module.exports = router;
